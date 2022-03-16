@@ -34,27 +34,33 @@ def number_of_q():
             print('некорректный ввод')
 
 
+def template_list(n):
+    while True:
+        temp = input('Шаблон ответа?')
+        if (len(temp) != n) | (temp.strip('01') != ''):
+            print('некорректный ввод')
+        else:
+            return list(map(int, list(temp)))
 
 
-'''
-# создание по шаблона
-temp_list = [1, 3, 4, 10, 11, '5 Н']
-template = '1010011'
-temp = list(template)
-result = pd.DataFrame({'flat':temp_list,
-                     'присутствовал': 1})
-for i in range(len(temp)):
-    column_name = 'Вопрос ' + str(i+1)
-    result[column_name] = int(temp[i])'''
+def template_enter(numquest):
+    columns = ['flat', 'присутствовал']
+    for i in range(numquest):
+        columns.append('Вопрос ' + str(i + 1))
+    new_result = pd.DataFrame(columns=columns)
+    # это временный вывод
+    print(new_result.to_string())
+
 
 if __name__ == '__main__':
     member_list = member_list_import()
-    q_numb = number_of_q()
+    num_quest = number_of_q()
     i = 0
     while i == 0:
         ans = input('Ввести шаблон? (y/n)')
         if ans == 'y':
             print('задаем шаблон')
+            template_enter(num_quest)
             i += 1
         elif ans == 'n':
             print('переходим к построчному вводу')
