@@ -14,8 +14,25 @@ def member_list_import():
         {'name': data['Unnamed: 3'] + ' ' + data['Unnamed: 4'] + ' ' + data['Unnamed: 5'],
             'flat': data['Unnamed: 2'],
             'square': data['Unnamed: 7']})
-    members = members.astype({'square': 'float'})
+    members = members.astype({'square': 'float',
+                              'flat': 'str',
+                              'name': 'str'})
+    print(members.head(2).to_string(), '\n', members.tail(2).to_string())
     return members
+
+
+def number_of_q():
+    while True:
+        try:
+            val = int(input('Количество вопросов?'))
+            if val > 0:
+                print(val, ' вопросов')
+                return val
+            else:
+                print('некорректный ввод')
+        except ValueError:
+            print('некорректный ввод')
+
 
 
 
@@ -32,4 +49,15 @@ for i in range(len(temp)):
 
 if __name__ == '__main__':
     member_list = member_list_import()
-    print(member_list.head(2).to_string(), '\n', member_list.tail(2).to_string())
+    q_numb = number_of_q()
+    i = 0
+    while i == 0:
+        ans = input('Ввести шаблон? (y/n)')
+        if ans == 'y':
+            print('задаем шаблон')
+            i += 1
+        elif ans == 'n':
+            print('переходим к построчному вводу')
+            i += 1
+        else:
+            print('некорректный ввод')
