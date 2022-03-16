@@ -14,3 +14,12 @@ tenant_list = pd.DataFrame({'name': data['Unnamed: 3'] + ' ' + data['Unnamed: 4'
                       'square': data['Unnamed: 7']})
 tenant_list = tenant_list.astype({'square': 'float' })
 
+# создание по шаблона
+temp_list = [1, 3, 4, 10, 11, '5 Н']
+template = '1010011'
+temp = list(template)
+result = pd.DataFrame({'flat':temp_list,
+                     'присутствовал': 1})
+for i in range(len(temp)):
+    column_name = 'Вопрос ' + str(i+1)
+    result[column_name] = int(temp[i])
