@@ -53,11 +53,40 @@ def template_enter(df, numquest):
     return df
 
 
-def singleline_enter(df, numquest):
+def line_enter(df, num_question):
+    idx_list = df[df['присутствовал'].isna()].index
+
+    i = 0
+    while i < idx_list.size:
+        answer = input(df.loc[idx_list[i], 'name'])
+        if answer == 's':
+            i = idx_list.size
+            print('ввод прерван')
+        if (answer == 'b') & (i == 0):
+            pass
+        elif (answer == 'b') & (i != 0):
+            i -= 1
+            print('вернулись на предыдущий шаг')
+        elif answer == '':
+            df.loc[idx_list[i], 'присутствовал'] = 0
+            i += 1
+        elif (len(answer) != num_question) | (answer.strip('01') != ''):
+            print('некорректный ввод')
+        else:
+            df.loc[idx_list[i], 'присутствовал'] = 1
+            df.iloc[idx_list[i], 4:] = list(map(int, list(answer)))
+            print('\n')
+            print(df[df.index == idx_list[i]].to_string())
+            i += 1
+    return df
+
+
+def single_line_enter(df, numquest):
     columns = ['присутствовал']
     for i in range(numquest):
         columns.append('Вопрос ' + str(i + 1))
     df = pd.concat([df, pd.DataFrame(columns=columns)], axis=1)
+    df = line_enter(df, numquest)
     return df
 
 
@@ -73,7 +102,7 @@ def tszh_helper():
             i += 1
         elif ans == 'n':
             print('переходим к построчному вводу')
-            output = singleline_enter(member_list, num_quest)
+            output = single_line_enter(member_list, num_quest)
             i += 1
         else:
             print('некорректный ввод')
