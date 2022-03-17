@@ -43,16 +43,25 @@ def template_list(n):
             return list(map(int, list(temp)))
 
 
-def template_enter(numquest):
-    columns = ['flat', 'присутствовал']
+def template_enter(df, numquest):
+    '''columns = ['flat', 'присутствовал']
     for i in range(numquest):
         columns.append('Вопрос ' + str(i + 1))
     new_result = pd.DataFrame(columns=columns)
     # это временный вывод
-    print(new_result.to_string())
+    print(new_result.to_string())'''
+    return df
 
 
-if __name__ == '__main__':
+def singleline_enter(df, numquest):
+    columns = ['присутствовал']
+    for i in range(numquest):
+        columns.append('Вопрос ' + str(i + 1))
+    df = pd.concat([df, pd.DataFrame(columns=columns)], axis=1)
+    return df
+
+
+def tszh_helper():
     member_list = member_list_import()
     num_quest = number_of_q()
     i = 0
@@ -60,10 +69,17 @@ if __name__ == '__main__':
         ans = input('Ввести шаблон? (y/n)')
         if ans == 'y':
             print('задаем шаблон')
-            template_enter(num_quest)
+            output = template_enter(member_list, num_quest)
             i += 1
         elif ans == 'n':
             print('переходим к построчному вводу')
+            output = singleline_enter(member_list, num_quest)
             i += 1
         else:
             print('некорректный ввод')
+
+    print(output.head(5).to_string())
+
+
+if __name__ == '__main__':
+    tszh_helper()
