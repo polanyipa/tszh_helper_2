@@ -43,13 +43,46 @@ def template_list(n):
             return list(map(int, list(temp)))
 
 
+def template_flats(answer):
+    tmp_list = input('Список квартир(через запятую)?')
+    result = pd.DataFrame({'flat': list(tmp_list.split(',')),
+                     'присутствовал': 1})
+
+    for i in range(len(answer)):
+        column_name = 'Вопрос ' + str(i + 1)
+        result[column_name] = int(answer[i])
+    return result
+
+
+def temp_flat_list_check(flats, member_list, previous):
+    return flats
+
+
 def template_enter(df, numquest):
-    '''columns = ['flat', 'присутствовал']
+    columns = ['flat', 'присутствовал']
     for i in range(numquest):
         columns.append('Вопрос ' + str(i + 1))
-    new_result = pd.DataFrame(columns=columns)
-    # это временный вывод
-    print(new_result.to_string())'''
+    result = pd.DataFrame(columns=columns)
+
+    i = 0
+    while i == 0:
+        answer = template_list(numquest)
+        new_result = template_flats(answer)
+        new_result = temp_flat_list_check(new_result, df, result)
+        result = pd.concat([result, new_result], axis=0)
+
+        j = 0
+        while j == 0:
+            confirm = input('ввести еще один шаблон? (y/n)')
+            if confirm == 'y':
+                j = 1
+            elif confirm == 'n':
+                j = 1
+                i = 1
+            else:
+                print('некорректный воод')
+    df = df.merge(result, how='left', on='flat')
+    df = line_enter(df, numquest)
     return df
 
 
@@ -107,7 +140,7 @@ def tszh_helper():
         else:
             print('некорректный ввод')
 
-    print(output.head(5).to_string())
+    print(output.head(10).to_string())
 
 
 if __name__ == '__main__':
