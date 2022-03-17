@@ -34,7 +34,7 @@ def number_of_q():
             print('некорректный ввод')
 
 
-def template_list(n):
+def template_answer(n):
     while True:
         temp = input('Шаблон ответа?')
         if (len(temp) != n) | (temp.strip('01') != ''):
@@ -43,7 +43,8 @@ def template_list(n):
             return list(map(int, list(temp)))
 
 
-def template_flats(answer):
+def template(answer):
+    # запрос списка квартир для шаблона, формирование шаблона
     tmp_list = input('Список квартир(через запятую)?')
     result = pd.DataFrame({'flat': list(tmp_list.split(',')),
                      'присутствовал': 1})
@@ -54,8 +55,8 @@ def template_flats(answer):
     return result
 
 
-def temp_flat_list_check(flats, member_list, previous):
-    # проверка списка введенных квартир на правильность
+def template_check(flats, member_list, previous):
+    # проверка шаблона на правильность
 
     # Проверка на то, имеются ли введенные квартиры в реестре
     if not (flats.flat.isin(member_list.flat).all()):
@@ -106,9 +107,9 @@ def template_enter(df, numquest):
 
     i = 0
     while i == 0:
-        answer = template_list(numquest)
-        new_result = template_flats(answer)
-        new_result = temp_flat_list_check(new_result, df, result)
+        answer = template_answer(numquest)
+        new_result = template(answer)
+        new_result = template_check(new_result, df, result)
         result = pd.concat([result, new_result], axis=0)
 
         j = 0
@@ -164,6 +165,23 @@ def single_line_enter(df, numquest):
     return df
 
 
+def result_analyse(df, numquest):
+
+    total_square = df.square.sum()
+    enable_square = df[df['присутствовал'] == 1]['square'].sum()
+    results_analyse = pd.DataFrame({'общая площадь': [str(total_square), ''],
+                                    'приняло участие': [str(enable_square),
+                                                        str(round(enable_square/total_square*100, 1))+' %']
+                                    },
+                                   index=[0, 1])
+    for i in range(numquest):
+        name = 'Вопрос ' + str(i+1)
+        result_i = df[df[name] == 1]['square'].sum()
+        results_analyse.loc[0, name] = result_i
+        results_analyse.loc[1, name] = str(round(result_i/enable_square*100, 1))+' %'
+    return results_analyse
+
+
 def tszh_helper():
     member_list = member_list_import()
     num_quest = number_of_q()
@@ -182,6 +200,9 @@ def tszh_helper():
             print('некорректный ввод')
 
     print(output.head(10).to_string())
+    print('\n', '\n')
+    analyse = result_analyse(output, num_quest)
+    print(analyse.to_string())
 
 
 if __name__ == '__main__':
