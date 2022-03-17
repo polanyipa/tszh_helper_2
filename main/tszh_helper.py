@@ -55,6 +55,46 @@ def template_flats(answer):
 
 
 def temp_flat_list_check(flats, member_list, previous):
+    # проверка списка введенных квартир на правильность
+
+    # Проверка на то, имеются ли введенные квартиры в реестре
+    if not (flats.flat.isin(member_list.flat).all()):
+        print('в реестре отсутствуют квартиры:')
+        for i in flats.loc[flats.flat.isin(member_list.flat) == False, 'flat'].values:
+            print(i)
+        print('они не будут учтены в голосовании:')
+        flats_out = flats[flats.flat.isin(member_list.flat)]
+        flats = flats_out
+
+    # Проверка на то, не были ли введены данные квартиры на предыдущем этапе
+    if flats.flat.isin(previous.flat).any():
+        print('Эти квартиры были введены на предыдущем этапе:')
+        for i in flats.loc[flats.flat.isin(previous.flat) == True, 'flat'].values:
+            print(i)
+        print('они не будут учтены в голосовании:')
+        flats_out = flats[flats.flat.isin(previous.flat) == False]
+        flats = flats_out
+
+    # Проверка на то, не введены ли квартиры дважды
+    if flats.flat.duplicated().any():
+        print('Номер квартиры введен дважды:')
+        for i in flats.loc[flats.flat.duplicated(), 'flat'].values:
+            print(i)
+        print('Проверьте правильность ввода')
+        flats = flats.drop_duplicates()
+
+    # Подтверждение принятия шаблона
+    i = 0
+    while i == 0:
+        confirm = input('Принять шаблон? (y/n)')
+        if confirm == 'y':
+            i = 1
+        elif confirm == 'n':
+            flats = flats.iloc[0:0]
+            i = 1
+        else:
+            print('некорректный ввод')
+
     return flats
 
 
@@ -80,8 +120,9 @@ def template_enter(df, numquest):
                 j = 1
                 i = 1
             else:
-                print('некорректный воод')
+                print('некорректный ввод')
     df = df.merge(result, how='left', on='flat')
+    print('переходим к построчному вводу')
     df = line_enter(df, numquest)
     return df
 
