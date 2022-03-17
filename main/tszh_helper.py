@@ -1,10 +1,12 @@
 import pandas as pd
 from tkinter import filedialog
+import numpy as np
 
 
 def member_list_import():
     # чтение файла
     filename = filedialog.askopenfilename()
+    directory = filename.rsplit('/', 1)[0]
     data = pd.read_excel(filename)
 
     # извленчение нужных данных (имена, номера квартир, площадь)
@@ -18,7 +20,7 @@ def member_list_import():
                               'flat': 'str',
                               'name': 'str'})
     print(members.head(2).to_string(), '\n', members.tail(2).to_string())
-    return members
+    return members, directory
 
 
 def number_of_q():
@@ -37,7 +39,7 @@ def number_of_q():
 def template_answer(n):
     while True:
         temp = input('Шаблон ответа?')
-        if (len(temp) != n) | (temp.strip('01') != ''):
+        if (len(temp) != n) | (temp.strip('012') != ''):
             print('некорректный ввод')
         else:
             return list(map(int, list(temp)))
@@ -137,7 +139,11 @@ def line_enter(df, num_question):
         if answer == 's':
             i = idx_list.size
             print('ввод прерван')
-        if (answer == 'b') & (i == 0):
+        elif answer == 'n':
+            df.loc[idx_list[i], 'присутствовал'] = 2
+            i += 1
+            print('недействительный бюллетень')
+        elif (answer == 'b') & (i == 0):
             pass
         elif (answer == 'b') & (i != 0):
             i -= 1
@@ -145,7 +151,7 @@ def line_enter(df, num_question):
         elif answer == '':
             df.loc[idx_list[i], 'присутствовал'] = 0
             i += 1
-        elif (len(answer) != num_question) | (answer.strip('01') != ''):
+        elif (len(answer) != num_question) | (answer.strip('012') != ''):
             print('некорректный ввод')
         else:
             df.loc[idx_list[i], 'присутствовал'] = 1
@@ -166,24 +172,73 @@ def single_line_enter(df, numquest):
 
 
 def result_analyse(df, numquest):
+    results = pd.DataFrame(columns=pd.MultiIndex.from_arrays([['кв №', 'Собственник'], [' ', ' ']]))
+    results[[('кв №', ' '), ('Собственник', ' ')]] = df[['flat', 'name']]
+    column_name = ['участие']
+    for i in range(numquest):
+        name = 'Вопрос ' + str(i + 1)
+        column_name.append(name)
+    multi_col = pd.MultiIndex.from_product([column_name, ['Да', 'Нет', 'Воздерж']],
+                                   names=['1', '2'])
+    result_2 = pd.DataFrame(columns=multi_col)
+    results = pd.concat([results, result_2], axis=0)
+
+    results[('участие', 'Да')] = np.where(df['присутствовал'] == 1, 1, None)
+    results[('участие', 'Нет')] = np.where(df['присутствовал'] == 0, 1, None)
+    results[('участие', 'Воздерж')] = np.where(df['присутствовал'] == 2, 1, None)
+
+    for col in column_name[1:]:
+        results[(col, 'Да')] = np.where(df[col] == 2, 1, None)
+        results[(col, 'Нет')] = np.where(df[col] == 0, 1, None)
+        results[(col, 'Воздерж')] = np.where(df[col] == 1, 1, None)
+
+
+    for col in column_name[1:]:
+        results[(col, 'Да')] = np.where(df[col] == 2, 1, None)
+        results[(col, 'Нет')] = np.where(df[col] == 0, 1, None)
+        results[(col, 'Воздерж')] = np.where(df[col] == 1, 1, None)
+
+    results_analyse = pd.DataFrame(columns=multi_col, index=[0, 1])
 
     total_square = df.square.sum()
     enable_square = df[df['присутствовал'] == 1]['square'].sum()
-    results_analyse = pd.DataFrame({'общая площадь': [str(total_square), ''],
-                                    'приняло участие': [str(enable_square),
-                                                        str(round(enable_square/total_square*100, 1))+' %']
-                                    },
-                                   index=[0, 1])
-    for i in range(numquest):
-        name = 'Вопрос ' + str(i+1)
-        result_i = df[df[name] == 1]['square'].sum()
-        results_analyse.loc[0, name] = result_i
-        results_analyse.loc[1, name] = str(round(result_i/enable_square*100, 1))+' %'
-    return results_analyse
+
+    results_analyse.loc[0, ('участие', 'Да')] = df[df['присутствовал'] == 1]['square'].sum()
+    results_analyse.loc[0, ('участие', 'Нет')] = df[df['присутствовал'] == 0]['square'].sum()
+    results_analyse.loc[0, ('участие', 'Воздерж')] = df[df['присутствовал'] == 2]['square'].sum()
+    results_analyse.loc[1, ('участие', 'Да')] = (str(round(df[df['присутствовал'] == 1]['square'].sum()
+                                                           / total_square * 100, 1))+' %')
+    results_analyse.loc[1, ('участие', 'Нет')] = (str(round(df[df['присутствовал'] == 0]['square'].sum()
+                                                           / total_square * 100, 1))+' %')
+    results_analyse.loc[1, ('участие', 'Воздерж')] = (str(round(df[df['присутствовал'] == 2]['square'].sum()
+                                                           / total_square * 100, 1))+' %')
+    for col in column_name[1:]:
+        results_analyse.loc[0, (col, 'Да')] = df[df[col] == 2]['square'].sum()
+        results_analyse.loc[0, (col, 'Нет')] = df[df[col] == 0]['square'].sum()
+        results_analyse.loc[0, (col, 'Воздерж')] = df[df[col] == 1]['square'].sum()
+        results_analyse.loc[1, (col, 'Да')] = (str(round(df[df[col] == 2]['square'].sum()
+                                                           / enable_square * 100, 1))+' %')
+        results_analyse.loc[1, (col, 'Нет')] = (str(round(df[df[col] == 0]['square'].sum()
+                                                           / enable_square * 100, 1))+' %')
+        results_analyse.loc[1, (col, 'Воздерж')] = (str(round(df[df[col] == 1]['square'].sum()
+                                                           / enable_square * 100, 1))+' %')
+
+    total = pd.DataFrame({'общая площадь': total_square}, index=[0])
+
+    return results, results_analyse, total
+
+
+def safe_to_excel(directory, df1, df2, df3):
+    name = directory + '\\' + 'out.xls'
+    with pd.ExcelWriter(name, engine='xlsxwriter') as writer2:
+        df1.to_excel(writer2, sheet_name='Spec', startrow=0, startcol=0, index=True, header=True)
+        df3.to_excel(writer2, sheet_name='Spec', startrow=df1.index.size + 5, startcol=0, index=True, header=True)
+        df2.to_excel(writer2, sheet_name='Spec', startrow=df1.index.size + 5, startcol=2, index=True, header=True)
+    return
 
 
 def tszh_helper():
-    member_list = member_list_import()
+    member_list, directory = member_list_import()
     num_quest = number_of_q()
     i = 0
     while i == 0:
@@ -199,10 +254,16 @@ def tszh_helper():
         else:
             print('некорректный ввод')
 
-    print(output.head(10).to_string())
+    res, analyse, total_square = result_analyse(output, num_quest)
+    safe_to_excel(directory, res, analyse, total_square)
+
     print('\n', '\n')
-    analyse = result_analyse(output, num_quest)
+    print(res.head(5).to_string())
+    print('\n', '\n')
     print(analyse.to_string())
+    print('\n', '\n')
+    print(total_square.to_string())
+    print('Обработка завершена')
 
 
 if __name__ == '__main__':
