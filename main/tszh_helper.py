@@ -1,6 +1,10 @@
 import pandas as pd
 from tkinter import filedialog
+import shutil
 from openpyxl import load_workbook
+from openpyxl.styles import Alignment
+from openpyxl.utils import get_column_letter
+from pathlib import Path
 
 
 def member_list_import():
@@ -14,11 +18,12 @@ def member_list_import():
     data = data.iloc[2:].reset_index()
     members = pd.DataFrame(
         {'name': data['Unnamed: 3'] + ' ' + data['Unnamed: 4'] + ' ' + data['Unnamed: 5'],
-            'flat': data['Unnamed: 2'],
-            'square': data['Unnamed: 7']})
+         'flat': data['Unnamed: 2'],
+         'square': data['Unnamed: 7']})
     members = members.astype({'square': 'float',
                               'flat': 'str',
                               'name': 'str'})
+    members.square = members.square.map(lambda x: round(x, 1))
     print(members.head(2).to_string(), '\n', members.tail(2).to_string())
     return members, directory
 
@@ -143,29 +148,31 @@ def line_enter(df, num_question):
         answer = input(df.loc[idx_list[i], 'name'])
         if answer == 's':
             i = idx_list.size
-            print('ввод прерван')
+            print('ввод прерван', '\n')
         elif answer == 'n':
             df.loc[idx_list[i], 'filled'] = 1
             df.loc[idx_list[i], ['1', '2', '3']] = [0, 0, 1]
             i += 1
-            print('недействительный бюллетень')
+            print('недействительный бюллетень', '\n')
         elif (answer == 'b') & (i == 0):
             pass
         elif (answer == 'b') & (i != 0):
             i -= 1
-            print('вернулись на предыдущий шаг')
+            df.iloc[idx_list[i], 7:] = None
+            print('вернулись на предыдущий шаг', '\n')
         elif answer == '':
             df.loc[idx_list[i], 'filled'] = 1
             df.loc[idx_list[i], ['1', '2', '3']] = [0, 1, 0]
             i += 1
+            print('не голосовал', '\n')
         elif (len(answer) != num_question) | (answer.strip('012') != ''):
-            print('некорректный ввод')
+            print('некорректный ввод', '\n')
         else:
             df.loc[idx_list[i], 'filled'] = 1
             df.loc[idx_list[i], ['1', '2', '3']] = [1, 0, 0]
             df.iloc[idx_list[i], 7:] = decoder(answer)
-            '''print('\n')
-            print(df[df.index == idx_list[i]].to_string())'''
+            print('\n')
+            print(df[df.index == idx_list[i]].to_string(), '\n')
             i += 1
     return df
 
@@ -181,7 +188,19 @@ def single_line_enter(df, numquest):
 
 def result_analyse(df):
     total_square = df.square.sum()
-    # Тут можно вставить возможность использовать фиксированную общую площадь
+    i = 0
+    while i == 0:
+        confirm = input('Ипользовать полученное значение для общей площади = '
+                        '{} кв.м. (1) или стандартное значение 7779.1 кв.м. (2)?'
+                        .format(str(round(total_square, 1))))
+        if confirm == '1':
+            i = 1
+        elif confirm == '2':
+            total_square = 7779.1
+            i = 1
+        else:
+            print('Некорректный ввод. Введите 1 или 2.')
+    print('\n', '\n')
 
     results_analyse = pd.DataFrame(index=[1, 2], columns=df.columns[3:])
     results_analyse.iloc[0] = df[df.columns[3:]].mul(df['square'], axis=0).sum()
@@ -194,6 +213,7 @@ def result_analyse(df):
 
 
 def print_result(df1, df2):
+    # Переименуем столбцы
     arrays = [['', ' ', 'площадь'],
               ['Собственник', '№ кв.', 'помещения']]
     col1 = pd.MultiIndex.from_arrays(arrays)
@@ -207,23 +227,90 @@ def print_result(df1, df2):
     out2 = df2.copy(deep=True)
     out1.columns = col1.append(col2).append(col3)
     out2.columns = col2.append(col3).append(col4)
-    print(out1.to_string(index=False))
+
+    # Выводим несколько первых и последних строк таблицы
+    ind = out1.index.tolist()
+    print(out1.iloc[ind[:3] + ind[-2:]].to_string(index=False))
     print('\n', '\n')
+
+    # Выводим результаты анализа
     print(out2.to_string(index=False))
     return
 
 
-def safe_to_excel(df):
+def create_header(ws, n, row):
+    ws.cell(row=row, column=3).value = 'участие'
+    ws.cell(row=row + 2, column=3).value = 'да'
+    ws.cell(row=row + 2, column=4).value = 'нет'
+    ws.cell(row=row + 2, column=5).value = 'недейств'
+    ws.cell(row=row, column=3).style = 'header_1'
+    ws.cell(row=row + 2, column=3).style = 'small_head'
+    ws.cell(row=row + 2, column=4).style = 'small_head'
+    ws.cell(row=row + 2, column=5).style = 'small_head'
+    ws.merge_cells(start_row=row, start_column=(3), end_row=row + 1, end_column=(5))
+    for i in range(n):
+        ws.cell(row=row, column=(6 + i * 3)).value = 'Вопрос ' + str(i + 1)
+        ws.cell(row=row + 2, column=(6 + i * 3)).value = 'да'
+        ws.cell(row=row + 2, column=(7 + i * 3)).value = 'возд'
+        ws.cell(row=row + 2, column=(8 + i * 3)).value = 'нет'
+        ws.cell(row=row, column=(6 + i * 3)).style = 'header_1'
+        ws.cell(row=row + 2, column=(6 + i * 3)).style = 'small_head'
+        ws.cell(row=row + 2, column=(7 + i * 3)).style = 'small_head'
+        ws.cell(row=row + 2, column=(8 + i * 3)).style = 'small_head'
+        ws.merge_cells(start_row=row, start_column=(6 + i * 3), end_row=row + 1, end_column=(8 + i * 3))
+    ws.cell(row=row, column=(6 + n * 3)).value = 'голосов'
+    ws.cell(row=row, column=(6 + n * 3)).style = 'header_1'
+    ws.merge_cells(start_row=row, start_column=(6 + n * 3), end_row=row + 2, end_column=(6 + n * 3))
+    column = ws.cell(row=row + 3, column=(6 + n * 3)).column_letter
+    ws.column_dimensions[column].width = 14
+    return
+
+
+def safe_to_excel(df1, df2, dir_file, num_quest):
     # переставим столбцы в нужном порядке
-    c = df.columns.tolist()
+    c = df1.columns.tolist()
     col = c[1:2] + c[:1] + c[3:] + c[2:3]
-    df = df[col]
-    name = r'C:\Users\User_1\Documents\1. Проекты\python\tszh_helper\template\template.xlsx'
-    book = load_workbook(name)
-    writer = pd.ExcelWriter(name, engine='openpyxl')
+    df1 = df1[col]
+
+    # Создаем выходной файл
+    template_file = str(Path(__file__).parents[1]) + r'/template/template.xlsx'
+    output_file = dir_file + '/Результаты голосования.xlsx'
+    shutil.copy(template_file, output_file)
+
+    # Настраиваем файл для записи
+    book = load_workbook(output_file)
+    writer = pd.ExcelWriter(output_file, engine='openpyxl')
     writer.book = book
     writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
-    df.to_excel(writer, startrow=6, startcol=0, header=False, index=False)
+    ws = writer.book.active
+
+    # записываем данные в файл
+    result_row = df1.index.size+8
+    df1.to_excel(writer, startrow=6, startcol=0, header=False, index=False)
+    df2.to_excel(writer, startrow=result_row + 2, startcol=2, header=False, index=False)
+
+    # форматирование таблицы
+    create_header(ws, num_quest, 4)
+    create_header(ws, num_quest, result_row)
+    ws.cell(row=result_row, column=(6 + num_quest * 3)).value = 'общая\nплощадь'
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=(6 + num_quest * 3))
+    ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=(6 + num_quest * 3))
+    ws.merge_cells(start_row=3, start_column=1, end_row=3, end_column=(6 + num_quest * 3))
+    ws.cell(row=1, column=1).alignment = Alignment(horizontal='center')
+    ws.cell(row=2, column=1).alignment = Alignment(horizontal='center')
+    ws.cell(row=3, column=1).alignment = Alignment(horizontal='center')
+    for row in range(7, df1.index.size+7):
+        for col in range(1, 7 + num_quest * 3):
+            ws.cell(row=row, column=col).style = 'value'
+        ws.cell(row=row, column=2).style = 'name'
+    for row in range(result_row + 3, result_row + 5):
+        for col in range(3, 7 + num_quest * 3):
+            ws.cell(row=row, column=col).style = 'value'
+
+    # Задаем область печати
+    print_area = ('A1:' + ws.cell(row=8, column=(6 + num_quest * 3)).column_letter
+                  + str(result_row + 4))
+    ws.print_area = print_area
     writer.save()
     return
 
@@ -231,7 +318,7 @@ def safe_to_excel(df):
 def tszh_helper():
     member_list, directory = member_list_import()
     num_quest = number_of_q()
-    '''i = 0
+    i = 0
     while i == 0:
         ans = input('Ввести шаблон? (y/n)')
         if ans == 'y':
@@ -243,29 +330,19 @@ def tszh_helper():
             output = single_line_enter(member_list, num_quest)
             i += 1
         else:
-            print('некорректный ввод')'''
+            print('некорректный ввод')
 
-
-    # Временный путь
-    output = template_enter(member_list, num_quest)
     # удаляем вспомогательный столбец - флаг обработки строки
+    # и заменяем нули на пустые ячейки
     output = output.drop(columns='filled')
-    # нужно бы заменить нули на пустые ячейки
+    mask = (output != 0)
+    output = output.where(mask, None)
+
     analyse = result_analyse(output)
     print_result(output, analyse)
-    safe_to_excel(output)
-
-
-    '''res, analyse, total_square = result_analyse(output, num_quest)
-    safe_to_excel(directory, res, analyse, total_square)
-
+    safe_to_excel(output, analyse, directory, num_quest)
     print('\n', '\n')
-    print(res.head(5).to_string())
-    print('\n', '\n')
-    print(analyse.to_string())
-    print('\n', '\n')
-    print(total_square.to_string())
-    print('Обработка завершена')'''
+    print('Обработка завершена')
 
 
 if __name__ == '__main__':
