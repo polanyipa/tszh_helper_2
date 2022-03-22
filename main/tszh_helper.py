@@ -1,9 +1,8 @@
 import pandas as pd
-from tkinter import filedialog
 import shutil
+from tkinter import filedialog
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment
-from openpyxl.utils import get_column_letter
 from pathlib import Path
 
 
@@ -24,7 +23,7 @@ def member_list_import():
                               'flat': 'str',
                               'name': 'str'})
     members.square = members.square.map(lambda x: round(x, 1))
-    print(members.head(2).to_string(), '\n', members.tail(2).to_string())
+    print(members.head(2).to_string(), '\n', members.tail(2).to_string(), '\n')
     return members, directory
 
 
@@ -33,7 +32,7 @@ def number_of_q():
         try:
             val = int(input('Количество вопросов?'))
             if val > 0:
-                print(val, ' вопросов')
+                print(val, ' вопросов', '\n')
                 return val
             else:
                 print('некорректный ввод')
@@ -140,6 +139,19 @@ def template_enter(df, numquest):
     return df
 
 
+def single_line_print(s, answer):
+    ans = pd.Series(list(answer))
+    dec = pd.Series(['нет', 'возд', 'да'], index=['0', '1', '2'])
+    col = ['собственник', '№ кв.']
+    for i in range(len(ans)):
+        col.append('Вопр.' + str(i + 1))
+    ret = pd.DataFrame(columns=col, index=[1, ])
+    ret.loc[1, ['собственник', '№ кв.']] = [s['name'], s['flat']]
+    ret.iloc[0, 2:] = ans.map(dec).array
+    print('\n', ret.to_string(index=False), '\n')
+    return
+
+
 def line_enter(df, num_question):
     idx_list = df[df['filled'].isna()].index
 
@@ -171,8 +183,7 @@ def line_enter(df, num_question):
             df.loc[idx_list[i], 'filled'] = 1
             df.loc[idx_list[i], ['1', '2', '3']] = [1, 0, 0]
             df.iloc[idx_list[i], 7:] = decoder(answer)
-            print('\n')
-            print(df[df.index == idx_list[i]].to_string(), '\n')
+            single_line_print(df.loc[idx_list[i]], answer)
             i += 1
     return df
 
@@ -274,7 +285,12 @@ def safe_to_excel(df1, df2, dir_file, num_quest):
 
     # Создаем выходной файл
     template_file = str(Path(__file__).parents[1]) + r'/template/template.xlsx'
-    output_file = dir_file + '/Результаты голосования.xlsx'
+    output_file = filedialog.asksaveasfilename(
+        defaultextension='.xlsx', filetypes=[("Excel files", '*.xlsx')],
+        initialdir=dir_file,
+        initialfile='Результаты голосования.xlsx',
+        title="Выберите название выходного файла")
+    # output_file = dir_file + '/Результаты голосования.xlsx'
     shutil.copy(template_file, output_file)
 
     # Настраиваем файл для записи
