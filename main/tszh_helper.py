@@ -239,11 +239,9 @@ def print_result(df1, df2):
     out1.columns = col1.append(col2).append(col3)
     out2.columns = col2.append(col3).append(col4)
 
-    # Выводим несколько первых и последних строк таблицы
+    # Выводим несколько первых и последних строк основной таблицы
     ind = out1.index.tolist()
-    print(out1.iloc[ind[:3] + ind[-2:]].to_string(index=False))
-    print('\n', '\n')
-
+    print(out1.iloc[ind[:3] + ind[-2:]].to_string(index=False), '\n', '\n')
     # Выводим результаты анализа
     print(out2.to_string(index=False))
     return
@@ -278,10 +276,6 @@ def create_header(ws, n, row):
 
 
 def safe_to_excel(df1, df2, dir_file, num_quest):
-    # переставим столбцы в нужном порядке
-    c = df1.columns.tolist()
-    col = c[1:2] + c[:1] + c[3:] + c[2:3]
-    df1 = df1[col]
 
     # Создаем выходной файл
     template_file = str(Path(__file__).parents[1]) + r'/template/template.xlsx'
@@ -299,6 +293,11 @@ def safe_to_excel(df1, df2, dir_file, num_quest):
     writer.book = book
     writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
     ws = writer.book.active
+
+    # переставим столбцы в нужном порядке
+    c = df1.columns.tolist()
+    col = c[1:2] + c[:1] + c[3:] + c[2:3]
+    df1 = df1[col]
 
     # записываем данные в файл
     result_row = df1.index.size+8
@@ -357,8 +356,7 @@ def tszh_helper():
     analyse = result_analyse(output)
     print_result(output, analyse)
     safe_to_excel(output, analyse, directory, num_quest)
-    print('\n', '\n')
-    print('Обработка завершена')
+    print('\n', 'Обработка завершена')
 
 
 if __name__ == '__main__':
